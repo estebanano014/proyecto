@@ -17,9 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     texto.setAttribute('id', 'mensaje');
     document.querySelector('a-scene').appendChild(texto);
 
-    setTimeout(() => {
-      texto.remove();
-    }, 4000);
+    setTimeout(() => texto.remove(), 4000);
   }
 
   function checkPuzzle() {
