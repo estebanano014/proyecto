@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Escape Simple 3D</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-extras@7.1.0/dist/aframe-extras.min.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; }
+
+        /* Estilo básico para el cuadro de mensaje */
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            font-size: 1.2em;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+        }
+
+        /* Puntero de mira simple */
+        #cursor-dot {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 999;
+        }
+
+        /* Texto de interacción simple */
+        #interaction-text {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            z-index: 999;
+            display: none; /* Inicialmente oculto */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="messageBox" class="message-box"></div>
+    <div id="interaction-text"></div>
+    <div id="cursor-dot"></div>
+
+    <a-scene background="color: #333"> 
+
+        <a-entity id="player" 
+                  camera="active: true" 
+                  look-controls="pointerLockEnabled: true" 
+                  wasd-controls="acceleration: 15"
+                  position="0 1.6 0">
+            <a-entity cursor="rayOrigin: cursor" 
+                      raycaster="objects: .clickable; far: 5">
+            </a-entity>
+        </a-entity>
+
+        <a-entity id="main-room" position="0 0 0">
+            <a-box position="0 -0.05 0" rotation="-90 0 0" width="8" height="8" depth="0.1" color="#666"></a-box>
+
+            <a-box position="0 2 -4" width="8" height="4" depth="0.1" color="#777"></a-box>
+            <a-box position="0 2 4" width="8" height="4" depth="0.1" color="#777"></a-box>
+            <a-box position="-4 2 0" rotation="0 90 0" width="8" height="4" depth="0.1" color="#777"></a-box>
+            <a-box position="4 2 0" rotation="0 90 0" width="8" height="4" depth="0.1" color="#777"></a-box>
+
+            <a-box id="door" position="0 0.5 3.95" width="1.5" height="3" depth="0.1" color="#444"
+                   class="clickable"
+                   door-handler
+                   event-set__hoveron="material.color: #555"
+                   event-set__hoveroff="material.color: #444">
+                <a-text value="SALIDA BLOQUEADA" align="center" width="3" color="white" position="0 0.5 0.06"></a-text>
+            </a-box>
+
+            <a-cylinder id="key" position="-3 0.2 -2.5" radius="0.1" height="0.5" color="gold"
+                        class="clickable"
+                        key-handler
+                        event-set__hoveron="material.color: orange"
+                        event-set__hoveroff="material.color: gold">
+                <a-text value="RECOGER LLAVE" align="center" width="2" color="black" position="0 0.3 0.1"></a-text>
+            </a-cylinder>
+            
+            <a-light type="ambient" color="#BBB" intensity="0.6"></a-light>
+            <a-light type="point" color="#FFF" intensity="0.8" position="0 3 0"></a-light>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        // Lógica del juego en JavaScript (simplificada)
+        let hasKey = false;
+        const messageBox = document.getElementById('messageBox');
+        const interactionText = document.getElementById('interaction-text');
+
+        function showMessage(msg, duration = 3000) {
+            messageBox.textContent = msg;
+            messageBox.style.display = 'block';
+            clearTimeout(messageBox.timeout);
+            messageBox.timeout = setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
+
+        function showInteractionText(msg) {
+            interactionText.textContent = msg;
+            interactionText.style.display = 'block';
+        }
+
+        function hideInteractionText() {
+            interactionText.style.display = 'none';
+        }
+
+        // Componente A-Frame para manejar la recolección de la llave
+        AFRAME.registerComponent('key-handler', {
+            init: function () {
+                const el = this.el;
+                el.addEventListener('click', () => {
+                    if (!hasKey) {
+                        hasKey = true;
+                        el.setAttribute('visible', false); // Ocultar la llave
+                        showMessage('¡Has recogido la LLAVE!');
+                        console.log('Llave recogida:', hasKey);
+                    }
+                });
+                // Mostrar texto de interacción al pasar el ratón
+                el.addEventListener('mouseenter', () => {
+                    if (!hasKey) showInteractionText('Hacer clic para RECOGER LLAVE');
+                });
+                el.addEventListener('mouseleave', () => {
+                    hideInteractionText();
+                });
+            }
+        });
+
+        // Componente A-Frame para manejar la puerta
+        AFRAME.registerComponent('door-handler', {
+            init: function () {
+                const el = this.el;
+                el.addEventListener('click', () => {
+                    if (hasKey) {
+                        el.setAttribute('animation', {
+                            property: 'rotation',
+                            to: '0 90 0', // Abrir la puerta
+                            dur: 1000,
+                            easing: 'easeOutQuad'
+                        });
+                        el.querySelector('a-text').setAttribute('value', '¡HAS ESCAPADO!');
+                        showMessage('¡La puerta se ha abierto! ¡HAS ESCAPADO!', 5000);
+                        // Opcional: Después de escapar, puedes redirigir o mostrar un mensaje final
+                        setTimeout(() => {
+                             alert("¡Felicidades, escapaste!");
+                             // window.location.href = "fin_del_juego.html";
+                        }, 2000);
+
+                    } else {
+                        showMessage('La puerta está BLOQUEADA. Necesitas la llave.');
+                    }
+                });
+                // Mostrar texto de interacción al pasar el ratón
+                el.addEventListener('mouseenter', () => {
+                    if (hasKey) showInteractionText('Hacer clic para ABRIR PUERTA');
+                    else showInteractionText('Puerta BLOQUEADA');
+                });
+                el.addEventListener('mouseleave', () => {
+                    hideInteractionText();
+                });
+            }
+        });
+
+        // Mensaje inicial al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            showMessage('Bienvenido. Usa WASD o las flechas para moverte. Haz clic para interactuar.', 6000);
+        });
+
+    </script>
+</body>
+</html>
